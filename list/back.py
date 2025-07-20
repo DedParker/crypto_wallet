@@ -42,33 +42,33 @@ def serve_index():
 def create_wallet():
     data = request.json
     mnemonic = security.generate_bip39_mnemonic()
-    seed = security.derive_seed(mnemonic, data.get('passphrase', ''))
+    seed = security.derive_seed(mnemonic, '')  # убрали passphrase
 
     private_key = hsm_client.generate_key(f"key_{datetime.now().timestamp()}")
     public_key = private_key.public_key()
 
-    # Генерация адреса Ethereum-стиля
-    public_bytes = public_key.public_bytes(
-        Encoding.X962,
-        PublicFormat.UncompressedPoint
-    )
-    keccak_hash = Web3.keccak(public_bytes[1:])  # Пропускаем заголовок
-    address = '0x' + keccak_hash[-20:].hex()
+    # Генерация адреса
+    public_bytes = public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    keccak_hash = Web3.keccak(public_bytes[1:])
+    raw_address = '0x' + keccak_hash[-20:].hex()
+    checksum_address = Web3.to_checksum_address(raw_address)
 
-    # Инициализация MFA
+    # MFA
     mfa = security.MFAHandler()
-    mfa_handlers[address] = mfa
-    hsm_keys[address] = private_key
+    mfa_handlers[checksum_address] = mfa
+    hsm_keys[checksum_address] = private_key
 
-    # Сохраняем кошелек в базе данных с начальным балансом 0
-    Wallet.add_wallet(address, 0.0)
+    # Новый баланс
+    initial_balance = float(data.get('balance', 0.0))
+    Wallet.add_wallet(checksum_address, initial_balance)
 
     return jsonify({
         'mnemonic': mnemonic,
-        'address': address,
+        'address': checksum_address,
         'mfa_secret': mfa.secret,
-        'mfa_uri': mfa.get_provisioning_uri(address)
+        'mfa_uri': mfa.get_provisioning_uri(checksum_address)
     })
+
 
 
 # Подписание транзакции
@@ -98,20 +98,19 @@ def sign_transaction():
 @app.route('/api/balance/<address>', methods=['GET'])
 def get_balance(address):
     try:
-        balance_wei = w3.eth.get_balance(address)
-        balance_eth = w3.from_wei(balance_wei, 'ether')
-        balance_float = float(balance_eth)
-
-        # Обновляем баланс в базе данных
-        Wallet.update_balance(address, balance_float)
+        wallet = Wallet.get_wallet_by_address(address)
+        if not wallet:
+            return jsonify({'error': 'Кошелёк не найден'}), 404
 
         return jsonify({
-            'address': address,
-            'balance': balance_float,
+            'address': wallet['address'],
+            'balance': wallet['balance_eth'],
             'unit': 'ETH'
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 
 @app.route('/api/transactions/<address>', methods=['GET'])

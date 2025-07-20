@@ -1,262 +1,120 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoWallet</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f7fa;
-            color: #333;
-        }
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e6ed;
-        }
-        .section {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        h2 {
-            color: #2c3e50;
-            margin-top: 0;
-        }
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #2980b9;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .result {
-            background: #e8f4fd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            word-break: break-all;
-            font-family: monospace;
-        }
-        .tab {
-            display: none;
-        }
-        .active {
-            display: block;
-        }
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        .tab-btn {
-            background: none;
-            border: none;
-            border-bottom: 3px solid transparent;
-            border-radius: 0;
-            margin-right: 10px;
-            color: #7f8c8d;
-        }
-        .tab-btn.active {
-            border-bottom: 3px solid #3498db;
-            color: #2c3e50;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>ETH Кошелёк</title>
 </head>
 <body>
-    <header>
-        <h1>🪙 CryptoWallet</h1>
-        <p>Безопасный криптовалютный кошелек с MFA и HSM</p>
-    </header>
 
-    <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('create')">Создать кошелек</button>
-        <button class="tab-btn" onclick="openTab('balance')">Баланс</button>
-        <button class="tab-btn" onclick="openTab('send')">Отправить</button>
-        <button class="tab-btn" onclick="openTab('transactions')">Транзакции</button>
-    </div>
+<h1>ETH Кошелёк</h1>
 
-    <!-- Создание кошелька -->
-    <div id="create" class="tab active section">
-        <h2>Создать новый кошелек</h2>
-        <button onclick="createWallet()">Создать кошелек</button>
-        <div id="walletResult" class="result"></div>
-    </div>
+<h2>Создать кошелёк</h2>
+<input id="initialBalance" placeholder="Начальный баланс в ETH" />
+<button onclick="createWallet()">Создать</button>
+<div id="walletResult"></div>
 
-    <!-- Проверка баланса -->
-    <div id="balance" class="tab section">
-        <h2>Проверить баланс</h2>
-        <input type="text" id="balanceAddress" placeholder="Введите адрес кошелька">
-        <button onclick="getBalance()">Проверить баланс</button>
-        <div id="balanceResult" class="result"></div>
-    </div>
+<hr>
 
-    <!-- Отправка транзакции -->
-    <div id="send" class="tab section">
-        <h2>Отправить транзакцию</h2>
-        <input type="text" id="fromAddress" placeholder="Ваш адрес">
-        <input type="text" id="toAddress" placeholder="Адрес получателя">
-        <input type="text" id="sendAmount" placeholder="Сумма (ETH)">
-        <input type="text" id="mfaCode" placeholder="Код MFA">
-        <button onclick="sendTransaction()">Отправить</button>
-        <div id="sendResult" class="result"></div>
-    </div>
+<h2>Проверить баланс</h2>
+<input id="balanceAddress" placeholder="Адрес" />
+<button onclick="getBalance()">Проверить</button>
+<div id="balanceResult"></div>
 
-    <!-- История транзакций -->
-    <div id="transactions" class="tab section">
-        <h2>История транзакций</h2>
-        <input type="text" id="txAddress" placeholder="Введите адрес кошелька">
-        <button onclick="getTransactions()">Загрузить историю</button>
-        <div id="txResult" class="result"></div>
-    </div>
+<hr>
 
-    <script>
-        // Управление вкладками
-        function openTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-            event.currentTarget.classList.add('active');
-        }
+<h2>Отправить перевод</h2>
+<input id="fromAddress" placeholder="Отправитель" />
+<input id="toAddress" placeholder="Получатель" />
+<input id="amount" placeholder="Сумма (ETH)" />
+<input id="mfaCode" placeholder="MFA код" />
+<button onclick="sendTransaction()">Перевести</button>
+<div id="transactionResult"></div>
 
-        // Создание кошелька
-        async function createWallet() {
-            const response = await fetch('/api/wallet/new', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({})
-            });
+<hr>
 
-            const data = await response.json();
-            const resultDiv = document.getElementById('walletResult');
+<h2>История</h2>
+<input id="historyAddress" placeholder="Адрес" />
+<button onclick="getTransactions()">Показать</button>
+<div id="historyResult"></div>
 
-            if (response.ok) {
-                resultDiv.innerHTML = `
-                    <strong>Кошелек успешно создан!</strong><br><br>
-                    <strong>Адрес:</strong> ${data.address}<br>
-                    <strong>Мнемоника:</strong> ${data.mnemonic}<br><br>
-                    <strong>MFA Secret:</strong> ${data.mfa_secret}<br>
-                    <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(data.mfa_uri)}">
-                    <p>Отсканируйте QR-код в приложении аутентификатора</p>
-                `;
-            } else {
-                resultDiv.innerHTML = `<strong>Ошибка:</strong> ${data.error}`;
-            }
-        }
+<script>
+  function randomHash() {
+    return '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
-        // Проверка баланса
-        async function getBalance() {
-            const address = document.getElementById('balanceAddress').value;
-            if (!address) return alert('Введите адрес кошелька');
+  async function createWallet() {
+    const balance = parseFloat(document.getElementById('initialBalance').value) || 0;
+    const res = await fetch('/api/wallet/new', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({balance})
+    });
+    const data = await res.json();
+    if(res.ok){
+      document.getElementById('walletResult').textContent =
+        `Адрес: ${data.address}\nMFA секрет: ${data.mfa_secret}\nМнемоника: ${data.mnemonic}`;
+    } else {
+      document.getElementById('walletResult').textContent = 'Ошибка при создании кошелька';
+    }
+  }
 
-            const response = await fetch(`/api/balance/${address}`);
-            const data = await response.json();
-            const resultDiv = document.getElementById('balanceResult');
+  async function getBalance() {
+    const address = document.getElementById('balanceAddress').value;
+    const res = await fetch(`/api/balance/${address}`);
+    const data = await res.json();
+    if(res.ok){
+      document.getElementById('balanceResult').textContent = `Баланс: ${data.balance} ETH`;
+    } else {
+      document.getElementById('balanceResult').textContent = data.error || 'Ошибка';
+    }
+  }
 
-            if (response.ok) {
-                resultDiv.innerHTML = `
-                    <strong>Адрес:</strong> ${data.address}<br>
-                    <strong>Баланс:</strong> ${data.balance} ${data.unit}
-                `;
-            } else {
-                resultDiv.innerHTML = `<strong>Ошибка:</strong> ${data.error}`;
-            }
-        }
+  async function sendTransaction() {
+    const from = document.getElementById('fromAddress').value;
+    const to = document.getElementById('toAddress').value;
+    const amount = document.getElementById('amount').value;
+    const mfa_code = document.getElementById('mfaCode').value;
+    const hash = randomHash();
 
-        // Отправка транзакции
-        async function sendTransaction() {
-            const from = document.getElementById('fromAddress').value;
-            const to = document.getElementById('toAddress').value;
-            const amount = document.getElementById('sendAmount').value;
-            const mfaCode = document.getElementById('mfaCode').value;
+    const signRes = await fetch('/api/transaction/sign', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({address: from, transaction: hash, mfa_code})
+    });
 
-            if (!from || !to || !amount || !mfaCode) {
-                return alert('Заполните все поля');
-            }
+    if(!signRes.ok){
+      document.getElementById('transactionResult').textContent = 'Ошибка MFA';
+      return;
+    }
 
-            // Шаг 1: Подписать транзакцию
-            const signResponse = await fetch('/api/transaction/sign', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    address: from,
-                    transaction: `Send ${amount} ETH to ${to}`,
-                    mfa_code: mfaCode
-                })
-            });
+    const saveRes = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({from, to, amount, hash})
+    });
 
-            const signData = await signResponse.json();
-            if (!signResponse.ok) {
-                document.getElementById('sendResult').innerHTML =
-                    `<strong>Ошибка подписи:</strong> ${signData.error}`;
-                return;
-            }
+    const result = await saveRes.json();
+    if(saveRes.ok){
+      document.getElementById('transactionResult').textContent =
+        `От: ${result.from}\nКому: ${result.to}\nСумма: ${result.amount} ETH`;
+    } else {
+      document.getElementById('transactionResult').textContent = result.error || 'Ошибка';
+    }
+  }
 
-            // Шаг 2: Отправить транзакцию в блокчейн
-            // В реальном приложении здесь будет вызов Ethereum ноды
-            document.getElementById('sendResult').innerHTML = `
-                <strong>Транзакция успешно подписана!</strong><br><br>
-                <strong>Подпись:</strong> ${signData.signed_tx.substring(0, 50)}...<br>
-                <strong>Публичный ключ:</strong> ${signData.public_key.substring(0, 50)}...<br><br>
-                <em>В реальном приложении здесь будет отправка в блокчейн</em>
-            `;
+  async function getTransactions() {
+    const address = document.getElementById('historyAddress').value;
+    const res = await fetch(`/api/transactions/${address}`);
+    const txs = await res.json();
+    if(res.ok && Array.isArray(txs)){
+      document.getElementById('historyResult').textContent =
+        txs.map(tx => `Кому: ${tx.recipient}, Сумма: ${tx.amount_eth} ETH, TX: ${tx.tx_hash}`).join('\n');
+    } else {
+      document.getElementById('historyResult').textContent = txs.error || 'Ошибка';
+    }
+  }
+</script>
 
-            // Обновляем баланс после отправки
-            setTimeout(getBalance, 2000);
-        }
-
-        // Получение истории транзакций
-        async function getTransactions() {
-            const address = document.getElementById('txAddress').value;
-            if (!address) return alert('Введите адрес кошелька');
-
-            const response = await fetch(`/api/transactions/${address}`);
-            const data = await response.json();
-            const resultDiv = document.getElementById('txResult');
-
-            if (response.ok) {
-                if (data.length === 0) {
-                    resultDiv.innerHTML = 'Нет транзакций для этого адреса';
-                    return;
-                }
-
-                let html = '<strong>Последние транзакции:</strong><br><ul>';
-                data.forEach(tx => {
-                    html += `<li>${tx.from} → ${tx.to}: ${tx.amount} ETH (${tx.timestamp})</li>`;
-                });
-                html += '</ul>';
-                resultDiv.innerHTML = html;
-            } else {
-                resultDiv.innerHTML = `<strong>Ошибка:</strong> ${data.error}`;
-            }
-        }
-    </script>
 </body>
 </html>

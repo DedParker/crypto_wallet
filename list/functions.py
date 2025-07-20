@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import insert
 from database import sync_engine, sync_session_factory, Base
 from taple import *
 from sqlalchemy.orm import Session
+from decimal import Decimal
 
 class SyncORM:
     @staticmethod
@@ -16,15 +17,34 @@ class SyncORM:
 
 
 class Wallet:
+
     @staticmethod
     def add_wallet(address: str, balance: float = 0.0):
         try:
             with sync_session_factory() as session:
-                stmt = insert(Wallets).values(address=address, balance_eth=balance).on_conflict_do_nothing(index_elements=["address"])
+                stmt = insert(Wallets).values(
+                    address=address,
+                    balance_eth=Decimal(str(balance))
+                ).on_conflict_do_nothing(index_elements=["address"])
                 session.execute(stmt)
                 session.commit()
         except Exception as e:
             print(e)
+
+    @staticmethod
+    def get_wallet_by_address(address: str):
+        try:
+            with sync_session_factory() as session:
+                wallet = session.execute(select(Wallets).where(Wallets.address == address)).scalar_one_or_none()
+                if wallet:
+                    return {
+                        "address": wallet.address,
+                        "balance_eth": float(wallet.balance_eth)
+                    }
+                return None
+        except Exception as e:
+            print(e)
+
 
 
     @staticmethod
@@ -84,4 +104,3 @@ class Transaction:
                     } for tx in txs]
         except Exception as e:
             print(e)
-
