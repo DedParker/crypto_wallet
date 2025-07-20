@@ -1,71 +1,63 @@
 from typing import Annotated
 from sqlalchemy import BigInteger, Text, Boolean, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
-from sqlalchemy import String, Integer, DateTime, Numeric, func
-
+from sqlalchemy import String, Integer, DateTime, Numeric, ForeignKey, func
 from SQL.DataBase import Base
 
 intpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True)]
-# usid = Annotated[int, mapped_column(BigInteger, unique=True)]
-stx = Annotated[str, mapped_column(Text)]
 
+#Таблица пользователей
 class Users(Base):
     __tablename__ = "users"
 
     id: Mapped[intpk]
-    login: Mapped[stx] = mapped_column(primary_key=True)
-    password: Mapped[stx]
+    login: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    password: Mapped[str] = mapped_column(String, nullable=False)
+    wallets: Mapped[list["Wallets"]] = relationship(back_populates="user")
 
+#Таблица кошельков
 class Wallets(Base):
     __tablename__ = "wallets"
 
     id: Mapped[intpk]
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     address: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     balance_eth: Mapped[float] = mapped_column(Numeric(36, 18), default=0)
-    
-# class Videos(Base):
-#     __tablename__ = "videos"
 
-#     id: Mapped[intpk]
-#     uid: Mapped[stx]
-#     title: Mapped[stx]
-#     description: Mapped[stx]
-#     likes: Mapped[int] = mapped_column(server_default=text("0"))
-#     dislikes: Mapped[int] = mapped_column(server_default=text("0"))
+    user: Mapped["Users"] = relationship(back_populates="wallets")
+
+    transactions: Mapped[list["Transactions"]] = relationship(back_populates="wallet")
+
+#Таблица транзакций
+class Transactions(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[intpk]
+    wallet_id: Mapped[int] = mapped_column(ForeignKey("wallets.id", ondelete="CASCADE"))
+    tx_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    recipient: Mapped[str] = mapped_column(String, nullable=False)
+    amount_eth: Mapped[float] = mapped_column(Numeric(36, 18), nullable=False)
+
+    wallet: Mapped["Wallets"] = relationship(back_populates="transactions")
 
 
+# stx = Annotated[str, mapped_column(Text)]
 
-
-# class Admin(Base):
-#     __tablename__ = "admins"
+# #таблица пользователей
+# class Users(Base):
+#     __tablename__ = "users"
 
 #     id: Mapped[intpk]
 #     login: Mapped[stx] = mapped_column(primary_key=True)
 #     password: Mapped[stx]
 
- 
-# class Admins(Base):
-#     __tablename__ = "admins"
+# #Таблица кошельков
+# class Wallets(Base):
+#     __tablename__ = "wallets"
 
 #     id: Mapped[intpk]
-#     user_id: Mapped[usid]
-#     position: Mapped[int] = mapped_column(server_default=text("0"))
-
-# class DQ(Base):
-#     __tablename__ = "download_queue"
-
-#     id: Mapped[intpk]
-#     file_id: Mapped[stx]
-#     text: Mapped[str] = mapped_column(Text, nullable=True)
-#     active: Mapped[bool] = mapped_column(Boolean, server_default="false")
-
-# class Photos(Base):
-#     __tablename__ = "photos"
-
-#     id: Mapped[intpk]
-#     file_id: Mapped[stx]
-#     type: Mapped[stx] = mapped_column(server_default="sfw")
-#     name: Mapped[stx] = mapped_column(server_default="noname")
-#     physical: Mapped[stx] = mapped_column(server_default="none")
+#     address: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+#     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+#     balance_eth: Mapped[float] = mapped_column(Numeric(36, 18), default=0)
+    
