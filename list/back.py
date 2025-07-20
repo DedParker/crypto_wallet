@@ -1,14 +1,16 @@
-# backend.py
 from flask import Flask, jsonify, request, send_from_directory
 from web3 import Web3
 import os
 from datetime import datetime
 from dotenv import load_dotenv
 import security
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
-from cryptography.hazmat.backends import default_backend
 from flask import send_file
+
+# Импорт ORM компонентов
+from database import sync_engine, Base
+from functions import Wallet, Transaction
+from taple import Wallets, Transactions
 
 load_dotenv()
 
@@ -22,15 +24,18 @@ HSM_LIB_PATH = os.getenv('HSM_LIB_PATH', '/usr/lib/hsm_lib.so')
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 hsm_client = security.HSMClient(HSM_LIB_PATH)
 
-# Базы данных
-transactions_db = []
-wallet_balances = {}
+# Создаем таблицы в базе данных при старте
+Base.metadata.create_all(sync_engine)
+
+# Вместо глобальных переменных используем БД
 mfa_handlers = {}
 hsm_keys = {}
+
 
 @app.route('/')
 def serve_index():
     return send_file('index.html', mimetype='text/html')
+
 
 # Генерация нового кошелька
 @app.route('/api/wallet/new', methods=['POST'])
@@ -54,6 +59,9 @@ def create_wallet():
     mfa = security.MFAHandler()
     mfa_handlers[address] = mfa
     hsm_keys[address] = private_key
+
+    # Сохраняем кошелек в базе данных с начальным балансом 0
+    Wallet.add_wallet(address, 0.0)
 
     return jsonify({
         'mnemonic': mnemonic,
@@ -86,48 +94,20 @@ def sign_transaction():
     })
 
 
-# Верификация транзакции
-@app.route('/api/transaction/verify', methods=['POST'])
-def verify_transaction():
-    data = request.json
-    public_key = serialization.load_pem_public_key(
-        data['public_key'].encode(),
-        backend=default_backend()
-    )
-    is_valid = security.verify_signature(
-        public_key,
-        bytes.fromhex(data['signature']),
-        data['transaction'].encode()
-    )
-    return jsonify({'valid': is_valid})
-
-
-# Холодное подписание
-@app.route('/api/cold-storage/sign', methods=['POST'])
-def cold_sign():
-    data = request.json
-    private_key = serialization.load_pem_private_key(
-        data['private_key'].encode(),
-        password=None,
-        backend=default_backend()
-    )
-    signature = security.ColdStorage.sign_offline(
-        private_key,
-        data['transaction'].encode()
-    )
-    return jsonify({'signature': signature.hex()})
-
-
-# Остальные маршруты из исходного файла
+# Остальные маршруты из исходного файла с изменениями под БД
 @app.route('/api/balance/<address>', methods=['GET'])
 def get_balance(address):
     try:
         balance_wei = w3.eth.get_balance(address)
         balance_eth = w3.from_wei(balance_wei, 'ether')
-        wallet_balances[address] = float(balance_eth)
+        balance_float = float(balance_eth)
+
+        # Обновляем баланс в базе данных
+        Wallet.update_balance(address, balance_float)
+
         return jsonify({
             'address': address,
-            'balance': float(balance_eth),
+            'balance': balance_float,
             'unit': 'ETH'
         })
     except Exception as e:
@@ -137,11 +117,11 @@ def get_balance(address):
 @app.route('/api/transactions/<address>', methods=['GET'])
 def get_transactions(address):
     try:
-        user_transactions = [
-            tx for tx in transactions_db
-            if tx['from'].lower() == address.lower() or tx['to'].lower() == address.lower()
-        ]
-        return jsonify(user_transactions)
+        # Получаем транзакции из базы данных
+        txs = Transaction.get_transactions(address)
+
+        # Форматируем для ответа
+        return jsonify(txs)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -154,23 +134,15 @@ def add_transaction():
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        new_tx = {
-            'hash': data['hash'],
-            'from': data['from'],
-            'to': data['to'],
-            'amount': float(data['amount']),
-            'timestamp': data.get('timestamp', datetime.utcnow().isoformat())
-        }
+        # Сохраняем транзакцию в базе данных
+        Transaction.create_transaction(
+            data['from'],
+            data['to'],
+            float(data['amount']),
+            data['hash']
+        )
 
-        transactions_db.append(new_tx)
-
-        # Обновляем кэш балансов
-        if new_tx['from'] in wallet_balances:
-            wallet_balances[new_tx['from']] -= new_tx['amount']
-        if new_tx['to'] in wallet_balances:
-            wallet_balances[new_tx['to']] += new_tx['amount']
-
-        return jsonify(new_tx), 201
+        return jsonify(data), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

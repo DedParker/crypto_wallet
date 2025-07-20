@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-
-from SQL.Config import settings
+from config import settings
 
 
 sync_engine = create_engine(
@@ -14,3 +13,5 @@ sync_session_factory = sessionmaker(sync_engine)
 
 class Base(DeclarativeBase):
     pass
+
+Base.metadata.create_all(sync_engine)
