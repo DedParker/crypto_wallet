@@ -1,4 +1,3 @@
-# security.py
 import os
 import hashlib
 import pyotp
@@ -10,8 +9,7 @@ from cryptography.exceptions import InvalidSignature
 from functions import Wallet, Transaction
 from words import wordlist
 
-
-# Генерация BIP39 мнемоники
+#генерирует bip39 мнемонику
 def generate_bip39_mnemonic(strength=256):
     if strength not in [128, 160, 192, 224, 256]:
         raise ValueError("Invalid strength value")
@@ -29,8 +27,7 @@ def generate_bip39_mnemonic(strength=256):
 
     return " ".join(mnemonic)
 
-
-# Генерация сида из мнемоники
+#создает seed на основе мнемоники и необязательного пароля
 def derive_seed(mnemonic, passphrase=""):
     salt = "mnemonic" + passphrase
     return hashlib.pbkdf2_hmac(
@@ -41,8 +38,7 @@ def derive_seed(mnemonic, passphrase=""):
         64
     )
 
-
-# Обработчик MFA
+#класс для работы с totp-кодами
 class MFAHandler:
     def __init__(self, secret=None):
         self.secret = secret or pyotp.random_base32()
@@ -61,8 +57,7 @@ class MFAHandler:
             issuer_name="CryptoWallet"
         )
 
-
-# Интеграция с HSM
+#имитирует работу с hsm-устройством
 class HSMClient:
     def __init__(self, hsm_lib_path):
         self.session = None
@@ -76,8 +71,7 @@ class HSMClient:
             ec.ECDSA(hashes.SHA256())
         )
 
-
-# Холодное хранение
+#работа с ключами в офлайн-режиме
 class ColdStorage:
     @staticmethod
     def generate_offline_key():
@@ -98,8 +92,7 @@ class ColdStorage:
             ec.ECDSA(hashes.SHA256())
         )
 
-
-# Проверка подписи транзакций
+#проверка подписи с использованием открытого ключа
 def verify_signature(public_key, signature, data):
     try:
         public_key.verify(

@@ -7,7 +7,6 @@ import security
 from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
 from flask import send_file
 
-# Импорт ORM компонентов
 from database import sync_engine, Base
 from functions import Wallet, Transaction
 from taple import Wallets, Transactions
@@ -16,7 +15,7 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='./', static_url_path='')
 
-# Конфигурация
+
 RPC_URL = os.getenv('RPC_URL', 'https://eth.llamarpc.com')
 PORT = int(os.getenv('PORT', 3000))
 HSM_LIB_PATH = os.getenv('HSM_LIB_PATH', '/usr/lib/hsm_lib.so')
@@ -24,41 +23,34 @@ HSM_LIB_PATH = os.getenv('HSM_LIB_PATH', '/usr/lib/hsm_lib.so')
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 hsm_client = security.HSMClient(HSM_LIB_PATH)
 
-# Создаем таблицы в базе данных при старте
 Base.metadata.create_all(sync_engine)
 
-# Вместо глобальных переменных используем БД
 mfa_handlers = {}
 hsm_keys = {}
-
 
 @app.route('/')
 def serve_index():
     return send_file('index.html', mimetype='text/html')
 
-
-# Генерация нового кошелька
+#создаем новый кошелек
 @app.route('/api/wallet/new', methods=['POST'])
 def create_wallet():
     data = request.json
     mnemonic = security.generate_bip39_mnemonic()
-    seed = security.derive_seed(mnemonic, '')  # убрали passphrase
+    seed = security.derive_seed(mnemonic, '')
 
     private_key = hsm_client.generate_key(f"key_{datetime.now().timestamp()}")
     public_key = private_key.public_key()
 
-    # Генерация адреса
     public_bytes = public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
     keccak_hash = Web3.keccak(public_bytes[1:])
     raw_address = '0x' + keccak_hash[-20:].hex()
     checksum_address = Web3.to_checksum_address(raw_address)
 
-    # MFA
     mfa = security.MFAHandler()
     mfa_handlers[checksum_address] = mfa
     hsm_keys[checksum_address] = private_key
 
-    # Новый баланс
     initial_balance = float(data.get('balance', 0.0))
     Wallet.add_wallet(checksum_address, initial_balance)
 
@@ -69,9 +61,7 @@ def create_wallet():
         'mfa_uri': mfa.get_provisioning_uri(checksum_address)
     })
 
-
-
-# Подписание транзакции
+#подписываем транзакцию
 @app.route('/api/transaction/sign', methods=['POST'])
 def sign_transaction():
     data = request.json
@@ -93,8 +83,7 @@ def sign_transaction():
         ).decode()
     })
 
-
-# Остальные маршруты из исходного файла с изменениями под БД
+#получаем баланс кошелька
 @app.route('/api/balance/<address>', methods=['GET'])
 def get_balance(address):
     try:
@@ -110,21 +99,16 @@ def get_balance(address):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
-
+#получаем список транзакций по адресу
 @app.route('/api/transactions/<address>', methods=['GET'])
 def get_transactions(address):
     try:
-        # Получаем транзакции из базы данных
         txs = Transaction.get_transactions(address)
-
-        # Форматируем для ответа
         return jsonify(txs)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+#добавляем новую транзакцию в бд
 @app.route('/api/transactions', methods=['POST'])
 def add_transaction():
     try:
@@ -133,7 +117,6 @@ def add_transaction():
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # Сохраняем транзакцию в базе данных
         Transaction.create_transaction(
             data['from'],
             data['to'],
@@ -145,7 +128,7 @@ def add_transaction():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+#оцениваем стоимость газа 
 @app.route('/api/estimate-gas', methods=['POST'])
 def estimate_gas():
     try:
@@ -172,7 +155,7 @@ def estimate_gas():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+#отдаём статические файлы или index.html
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
@@ -180,7 +163,6 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
-
 
 if __name__ == '__main__':
     app.run(port=PORT)
