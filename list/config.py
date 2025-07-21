@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+#подгруз настроек из env 
 class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
@@ -16,4 +17,4 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file="sas.env")
 
-settings = Settings() # type: ignore
+settings = Settings()

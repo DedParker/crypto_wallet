@@ -6,7 +6,7 @@ from database import Base
 
 intpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True)]
 
-# Таблица кошельков
+#таблица кошельков
 class Wallets(Base):
     __tablename__ = "wallets"
 
@@ -19,7 +19,7 @@ class Wallets(Base):
         cascade="all, delete-orphan"
     )
 
-# Таблица транзакций
+#таблица транзакций
 class Transactions(Base):
     __tablename__ = "transactions"
 

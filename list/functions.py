@@ -5,6 +5,7 @@ from taple import *
 from sqlalchemy.orm import Session
 from decimal import Decimal
 
+#пересоздание таблиц
 class SyncORM:
     @staticmethod
     def create_tables():
@@ -18,6 +19,7 @@ class SyncORM:
 
 class Wallet:
 
+#добавление кошелька
     @staticmethod
     def add_wallet(address: str, balance: float = 0.0):
         try:
@@ -31,6 +33,7 @@ class Wallet:
         except Exception as e:
             print(e)
 
+#получение кошелька по адресу
     @staticmethod
     def get_wallet_by_address(address: str):
         try:
@@ -46,7 +49,7 @@ class Wallet:
             print(e)
 
 
-
+#обновление баланса
     @staticmethod
     def update_balance(address: str, new_balance: float):
         try:
@@ -58,6 +61,7 @@ class Wallet:
         except Exception as e:
             print(e)
 
+#вывод всех кошельков
     @staticmethod
     def get_wallets():
         try:
@@ -72,6 +76,8 @@ class Wallet:
 
 
 class Transaction:
+
+#создание транзакции   
     @staticmethod
     def create_transaction(sender: str, recipient: str, amount: float, tx_hash: str):
         try:
@@ -90,6 +96,7 @@ class Transaction:
         except Exception as e:
             print(e)
 
+#вывод всех транзкций
     @staticmethod
     def get_transactions(address: str):
         try:
